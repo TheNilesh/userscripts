@@ -159,7 +159,6 @@
                     global: false, //so that this request is not captured by ajaxSuccess() above
                     url: '/AMS/AMSViewEmployeeCalendarSub' + pagename + '.aspx?FDate=' + passDate + '&Flag=P&UC=' + UC,
                     success: function (response) {
-                        debugger;
                         var workHrsLastMonth = calculateWorkHrs(response, true);
                         var workHrsTotal = {
                             ewDays: workHrsLastMonth.ewDays + workHrsThisMonth.ewDays,      // expected working days
