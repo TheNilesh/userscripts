@@ -1,7 +1,6 @@
 // ==UserScript==
 // @name         Workline WorkingHrs Calculator
-// @namespace    https://github.com/TheNilesh
-// @license      MIT
+// @namespace    http://tampermonkey.net/
 // @version      0.1
 // @description  This script adds label on Workline HRMS View Attendance page to show number of working hours completed and expected working hours.
 // @author       Nilesh Akhade
@@ -12,11 +11,49 @@
 (function () {
     'use strict';
 
+    var month = new Array();
+    month[0] = "Jan";
+    month[1] = "Feb";
+    month[2] = "Mar";
+    month[3] = "Apr";
+    month[4] = "May";
+    month[5] = "Jun";
+    month[6] = "Jul";
+    month[7] = "Aug";
+    month[8] = "Sep";
+    month[9] = "Oct";
+    month[10] = "Nov";
+    month[11] = "Dec";
+
     function padZero(num) {
         if (num <= 9 && num >= 0) {
             return '0' + num;
         }
         return '' + num;
+    }
+
+    function itsYesterday(date) {
+        var d = new Date();
+        d.setDate(d.getDate() - 1);
+        var sYesterday = padZero(d.getDate()) + '-' + month[d.getMonth()] + '-' + d.getFullYear();
+        return date === sYesterday;
+    }
+
+    function itsToday(date) {
+        var d = new Date();
+        var sToday = padZero(d.getDate()) + '-' + month[d.getMonth()] + '-' + d.getFullYear();
+        return date === sToday;
+    }
+
+    function areYouInOffice() {
+        return true;//todo:implement
+    }
+
+    function currentTime() {
+        var d = new Date();
+        var h = d.getHours();
+        var m = d.getMinutes();
+        return padZero(h) + ':' + padZero(m);
     }
 
     function splitHrsMins(timeDuration) {
@@ -27,16 +64,30 @@
         };
     }
 
+    function timeDiff(timeG, timeL) {
+        var tG = splitHrsMins(timeG);
+        var tL = splitHrsMins(timeL);
+        var diffMin = tG.minutes - tL.minutes;
+        var diffHr = tG.hours - tL.hours;
+        if(diffMin < 0) {
+            diffHr=-1;
+            diffMin=60+diffMin;
+        }
+        return padZero(diffHr) + ':' + padZero(diffMin);
+    }
+
     function calculateWorkHrs(response, lastMonth) {
+        var thisMonth = !lastMonth;
         var pResp = '<div>' + response + '</div>';
         //todo: optimize pResp using parseHtml()
         //todo: Write common mapper function and re-use it
         var dates = $(pResp).find("td[data-title='Date']").map(function () { return this.innerText.trim(); }).get();
         var shifts = $(pResp).find("td[data-title='Shift']").map(function () { return this.innerText.trim(); }).get();
+        var logins = $(pResp).find("td[data-title='Login']").map(function () { return this.innerText.trim(); }).get();
+        var logouts = $(pResp).find("td[data-title='Logout']").map(function () { return this.innerText.trim(); }).get();
         var workingHrs = $(pResp).find("td[data-title='Working Hrs.']").map(function () { return this.innerText.trim(); }).get();
         var leavesPending = $(pResp).find("td[data-title='Leave Pending']").map(function () { return this.innerText.trim(); }).get();
         var leavesApproved = $(pResp).find("td[data-title='Leave Approved']").map(function () { return this.innerText.trim(); }).get();
-
         //Consider records from 21st of the last month
         if (lastMonth) {
             dates = dates.slice(20);
@@ -60,6 +111,27 @@
         var i;
         for (i = 0; i < dates.length; i++) {
             if (shifts[i] === 'GS' && leavesPending[i] === '' && leavesApproved[i] === '') {
+
+                if(workingHrs[i] === '') {
+                    debugger;
+                    if(itsYesterday(dates[i])) {
+                        workingHrs[i] = timeDiff(logouts[i], logins[i]); //For some reason workingHrs is calculated couple of days later
+                    } else if(itsToday(dates[i])) {
+                        if(areYouInOffice()) {
+                            logouts[i] = currentTime();
+                            workingHrs[i] = timeDiff(logouts[i], logins[i]);
+                        } else {
+                            if(logins[i] == '') {
+                                //not arrived at office
+                                continue;
+                            }
+                            workingHrs[i] = timeDiff(logouts[i], logins[i]);
+                        }
+                    } else {
+                        // Possibly absent
+                        workingHrs[i] = '00:00';
+                    }
+                }
                 var hrsMins = splitHrsMins(workingHrs[i]);
                 wHours += hrsMins.hours;
                 wMinutes += hrsMins.minutes;
@@ -87,6 +159,7 @@
                     global: false, //so that this request is not captured by ajaxSuccess() above
                     url: '/AMS/AMSViewEmployeeCalendarSub' + pagename + '.aspx?FDate=' + passDate + '&Flag=P&UC=' + UC,
                     success: function (response) {
+                        debugger;
                         var workHrsLastMonth = calculateWorkHrs(response, true);
                         var workHrsTotal = {
                             ewDays: workHrsLastMonth.ewDays + workHrsThisMonth.ewDays,      // expected working days
@@ -99,15 +172,16 @@
                         workHrsTotal.wHours += Math.floor(minutes / 60);
                         workHrsTotal.wMinutes = minutes % 60;
                         console.log(workHrsTotal);
+                        var expectedWorkHrs = workHrsTotal.ewDays * 8; //8 hrs average expected
 
                         //Add an element on DOM to show workHrs
                         if ($('#avg-time').length) {
                             $('#avg-time').fadeOut('fast', function () {
-                                $('#avg-time').html('<i class="fa fa-clock-o"></i> ' + workHrsTotal.wHours + ':' + padZero(workHrsTotal.wMinutes) + ' / ' + (workHrsTotal.ewDays * 8) + ':00 </button>');
+                                $('#avg-time').html('<i class="fa fa-clock-o"></i> ' + workHrsTotal.wHours + ':' + padZero(workHrsTotal.wMinutes) + ' / ' + expectedWorkHrs + ':00 </button>');
                                 $('#avg-time').fadeIn('fast');
                             });
                         } else {
-                            $('.col-md-10.text-right.print-none').prepend('<button id="avg-time" type="button" class="btn btn-sm btn-danger" style="padding:5px;"> <i class="fa fa-clock-o"></i> ' + workHrsTotal.wHours + ':' + padZero(workHrsTotal.wMinutes) + ' / ' + (workHrsTotal.ewDays * 8) + ':00 </button>');
+                            $('.col-md-10.text-right.print-none').prepend('<button id="avg-time" type="button" class="btn btn-sm btn-danger" style="padding:5px;"> <i class="fa fa-clock-o"></i> ' + workHrsTotal.wHours + ':' + padZero(workHrsTotal.wMinutes) + ' / ' + expectedWorkHrs + ':00 </button>');
                         }
 
                     }
