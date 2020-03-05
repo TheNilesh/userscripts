@@ -113,7 +113,6 @@
             if (shifts[i] === 'GS' && leavesPending[i] === '' && leavesApproved[i] === '') {
 
                 if(workingHrs[i] === '') {
-                    debugger;
                     if(itsYesterday(dates[i])) {
                         workingHrs[i] = timeDiff(logouts[i], logins[i]); //For some reason workingHrs is calculated couple of days later
                     } else if(itsToday(dates[i])) {
