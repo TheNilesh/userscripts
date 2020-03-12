@@ -45,8 +45,10 @@
         return date === sToday;
     }
 
-    function areYouInOffice() {
-        return true;//todo:implement
+    function morningTime() {
+        var d = new Date();
+        var h = d.getHours();
+        return h < 13;
     }
 
     function currentTime() {
@@ -116,14 +118,13 @@
                     if(itsYesterday(dates[i])) {
                         workingHrs[i] = timeDiff(logouts[i], logins[i]); //For some reason workingHrs is calculated couple of days later
                     } else if(itsToday(dates[i])) {
-                        if(areYouInOffice()) {
-                            logouts[i] = currentTime();
-                            workingHrs[i] = timeDiff(logouts[i], logins[i]);
-                        } else {
-                            if(logins[i] == '') {
-                                //not arrived at office
-                                continue;
+                        if(logins[i] == '') {
+                            if(morningTime()) { // may be not arrived at office
+                                continue; // dont consider today
                             }
+                            workingHrs[i] = '00:00'; // consider absent
+                        } else {
+                            logouts[i] = currentTime();
                             workingHrs[i] = timeDiff(logouts[i], logins[i]);
                         }
                     } else {
@@ -172,6 +173,7 @@
                         console.log(workHrsTotal);
                         var expectedWorkHrs = workHrsTotal.ewDays * 8; //8 hrs average expected
 
+                        var btnClass = workHrsTotal.wHours < expectedWorkHrs ? 'btn-warning' : 'btn-success';
                         //Add an element on DOM to show workHrs
                         if ($('#avg-time').length) {
                             $('#avg-time').fadeOut('fast', function () {
@@ -179,7 +181,7 @@
                                 $('#avg-time').fadeIn('fast');
                             });
                         } else {
-                            $('.col-md-10.text-right.print-none').prepend('<button id="avg-time" type="button" class="btn btn-sm btn-danger" style="padding:5px;"> <i class="fa fa-clock-o"></i> ' + workHrsTotal.wHours + ':' + padZero(workHrsTotal.wMinutes) + ' / ' + expectedWorkHrs + ':00 </button>');
+                            $('.col-md-10.text-right.print-none').prepend('<button id="avg-time" type="button" class="btn btn-sm ' + btnClass + '" style="padding:5px;"> <i class="fa fa-clock-o"></i> ' + workHrsTotal.wHours + ':' + padZero(workHrsTotal.wMinutes) + ' / ' + expectedWorkHrs + ':00 </button>');
                         }
 
                     }
