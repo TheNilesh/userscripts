@@ -112,7 +112,7 @@
         var wHours = 0, wMinutes = 0, ewDays = 0;
         var i;
         for (i = 0; i < dates.length; i++) {
-            if (shifts[i] === 'GS' && leavesPending[i] === '' && leavesApproved[i] === '') {
+            if (shifts[i] === 'GS1' && leavesPending[i] === '' && leavesApproved[i] === '') {
 
                 if(workingHrs[i] === '') {
                     if(itsYesterday(dates[i])) {
