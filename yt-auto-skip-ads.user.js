@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Auto Skip Ads
 // @namespace    https://github.com/TheNilesh/userscripts
-// @version      0.1
+// @version      0.2
 // @description  Detects Skip Ad button on youtube video, and clicks it automatically.
 // @author       You
 // @match        https://www.youtube.com/watch*
@@ -14,12 +14,20 @@
     function waitForElm(selector) {
         return new Promise(resolve => {
             if (document.querySelector(selector)) {
-                return resolve(document.querySelector(selector));
+                var elem = document.querySelector(selector)
+                elem.setAttribute("style", "background-color:red;");
+                let randomDelay = Math.random() * 3;
+                setTimeout(elem.click(), randomDelay);
+                // return resolve(document.querySelector(selector));
             }
 
             const observer = new MutationObserver(mutations => {
                 if (document.querySelector(selector)) {
-                    resolve(document.querySelector(selector));
+                    var elem = document.querySelector(selector)
+                    elem.setAttribute("style", "background-color:red;");
+                    let randomDelay = Math.random() * 3;
+                    setTimeout(elem.click(), randomDelay);
+                    // resolve(document.querySelector(selector));
                     // observer.disconnect();
                 }
             });
@@ -32,8 +40,6 @@
     }
     // ytp-ad-skip-button ytp-button
     waitForElm('.ytp-ad-skip-button').then((elm) => {
-        console.log('Ad skip button detected');
-        var skipBtn = document.querySelector('.ytp-ad-skip-button');
-        skipBtn.click();
+        console.log('This promise will never resolve');
     });
 })();
